@@ -4,7 +4,7 @@ import elements from './elements.js';
 
 const dom = {
     mapping() {
-        elements.spielfeld = document.querySelector('#spielfeld')
+        elements.cAsteroids = document.querySelector('#cAsteroids')
     },
     create({
         content = false,

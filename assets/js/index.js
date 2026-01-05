@@ -2,14 +2,16 @@
 
 import dom from "./dom.js";
 import render from './render.js';
+import noise from "./noise.js";
 import Asteroid from './classes/Asteroid.js';
 
-const init = () =>{
+const init = () => {
+    noise.init();
     dom.mapping();
     render.init();
-    new Asteroid().render();
-    new Asteroid().render();
-    new Asteroid().render();
+    new Asteroid().draw();
+    new Asteroid().draw();
+    new Asteroid().draw();
 }
 
 init();
