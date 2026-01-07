@@ -72,7 +72,7 @@ class Asteroid {
         const ctx = c.getContext('2d');
         const grad = ctx.createRadialGradient(
             c.width / 2, c.height / 2, c.width / 2,
-            c.height / 2, c.width / 2, c.height / 3,
+            c.height / 2, c.width / 2, c.height / 5,
         )
         grad.addColorStop(0, '#000');
         grad.addColorStop(1, '#fff');
@@ -89,9 +89,36 @@ class Asteroid {
         // Draw the texture
         ctx.drawImage(this.cTexture, 0, 0);
 
-        // Draw the mask with multiply blend mode
-        ctx.globalCompositeOperation = 'multiply';
+        // Add the mask
+        ctx.globalCompositeOperation = 'lighter';
         ctx.drawImage(this.cMask, 0, 0);
+
+        // Invert the mask
+        const ctxMask = this.cMask.getContext('2d');
+        ctxMask.globalCompositeOperation = 'difference';
+        ctxMask.fillStyle = '#fff';
+        ctxMask.fillRect(0, 0, this.cMask.width, this.cMask.height);
+
+        // Subtract 128 from each pixel to darken
+        const imageData = ctx.getImageData(0, 0, c.width, c.height);
+        const data = imageData.data;
+        for (let i = 0; i < data.length; i += 4) {
+            data[i] = Math.max(0, data[i] - 128) * 2;     // R
+            data[i + 1] = Math.max(0, data[i + 1] - 128) * 2; // G
+            data[i + 2] = Math.max(0, data[i + 2] - 128) * 2; // B
+            let w = 20;
+            if (data[i] < 128 - (w / 2)) data[i + 3] = 0;
+            if (data[i] >= 128 - (w / 2) && data[i] <= 128 + (w / 2)) {
+                data[i + 0] = 255;
+                data[i + 1] = 255;
+                data[i + 2] = 255;
+            } else {
+                data[i + 0] = 20;
+                data[i + 1] = 20;
+                data[i + 2] = 20;
+            }
+        }
+        ctx.putImageData(imageData, 0, 0);
 
         // Reset blend mode
         ctx.globalCompositeOperation = 'source-over';
