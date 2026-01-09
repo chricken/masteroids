@@ -2,21 +2,20 @@
 
 import data from "./data.js";
 import render from "./render.js";
+import projectile from "./classes/Projectile.js";
 
 const game = {
     start() {
         data.idGameInterval = setInterval(
             () => {
-                game.updateAsteroids();
+                game.update();
             },
             data.tickInterval
         );
     },
-    updateAsteroids() {
-        data.asteroids.forEach(asteroid => {
-            asteroid.update();
-        });
+    update() {
         render.asteroids();
+        render.projectiles();
     }
 }
 

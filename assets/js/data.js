@@ -18,7 +18,7 @@ const data = {
     numGrid,
     asteroids: [],
     debris: [],
-    shots: [],
+    projectiles: [],
     // 2-Dimensionales Raster
     raster: new Array(numGrid).fill(new Array(numGrid)),
     stations: [],

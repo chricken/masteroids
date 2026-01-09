@@ -10,13 +10,14 @@ import game from "./game.js";
 const init = () => {
     noise.init();
     dom.mapping();
+    dom.appendEventListeners();
     render.init();
 
     for (let i = 0; i < data.numberOfAsteroids; i++) {
         new Asteroid();
     }
-    console.log(data.asteroids.map(asteroid => asteroid.position));
 
+    console.log(data.asteroids.map(asteroid => asteroid.position));
 
     game.start();
 

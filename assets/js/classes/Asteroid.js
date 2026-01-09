@@ -20,12 +20,12 @@ class Asteroid {
                     outlineMinValue = 70,
                     outlineMaxValue = 100,
                     displacementStrength = 60,
-
+                    id = null
                 } = {}) {
 
         Object.assign(this, {seed1, seed2, seed3, size, zoom, outlineMinValue, outlineMaxValue, displacementStrength});
         this.maxDistance = this.size / 2 * .7;
-        this.id = crypto.randomUUID();
+        this.id = id ? id : helpers.createID();
         this.position = {x: Math.random(), y: Math.random()};
         this.velocity = Math.random() * data.maxSpeedAsteroids;
         this.angle = Math.random() * Math.PI * 2;
