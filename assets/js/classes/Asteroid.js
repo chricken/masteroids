@@ -18,13 +18,13 @@ class Asteroid {
                     ),
                     zoom = 35,
                     outlineMinValue = 1,
-                    outlineMaxValue = 20,
+                    outlineMaxValue = 30,
                     displacementStrength = 60,
 
                 } = {}) {
 
         Object.assign(this, {seed1, seed2, seed3, size, zoom, outlineMinValue, outlineMaxValue, displacementStrength});
-
+        this.maxDistance = this.size / 2 * .7;
         this.id = crypto.randomUUID();
         this.position = {x: Math.random(), y: Math.random()};
         this.velocity = Math.random() * data.maxSpeedAsteroids;
@@ -65,7 +65,7 @@ class Asteroid {
             zOffset: this.seed3 % 4096,
             zoom: this.zoom,
             color1: [0, 0, 0],
-            color2: [0, 0, 70],
+            color2: [0, 0, 60],
         })
 
         // Erstelle Displacement Map
@@ -75,16 +75,26 @@ class Asteroid {
         this.renderDisplacementMap(cDisplacement);
 
         // Zeichne mehrere radialGradients in verschiedenen Größen
-        const numGradients = helpers.createNumber(1, 15);
+        const numGradients = helpers.createNumber(20, 40);
+        const centerX = c.width / 2;
+        const centerY = c.height / 2;
+
         for (let i = 0; i < numGradients; i++) {
-            const x = helpers.createNumber(0, c.width);
-            const y = helpers.createNumber(0, c.height);
-            const radius = helpers.createNumber(c.width / 5, c.width / 2);
+            const radius = helpers.createNumber(c.width / 10, c.width / 4);
+            const distance = helpers.createNumber(0, this.maxDistance);
+            const angle = Math.random() * Math.PI * 2;
+            const x = centerX + Math.cos(angle) * distance;
+            const y = centerY + Math.sin(angle) * distance;
 
+            // Black or white
             const grad = ctx.createRadialGradient(x, y, 0, x, y, radius);
-            grad.addColorStop(0, `rgba(0,0,0,1)`);
-            grad.addColorStop(1, 'rgba(0, 0, 0,0)');
-
+            if (Math.random() > .5) {
+                grad.addColorStop(0, `hsla(0, 0%, 100%, 1)`);
+                grad.addColorStop(1, 'hsla(0, 0%, 100%, 0)');
+            } else {
+                grad.addColorStop(0, `hsla(0, 0%, 0%, .5)`);
+                grad.addColorStop(1, 'hsla(0, 0%, 0%, 0)');
+            }
             ctx.fillStyle = grad;
             ctx.globalCompositeOperation = 'source-over';
             ctx.fillRect(0, 0, c.width, c.height);
@@ -92,8 +102,34 @@ class Asteroid {
 
         // Wende Displacement auf die Textur an
         this.applyDisplacement(c, cDisplacement, c);
+        const softBorder = 10;
+        // Kanten aufweichen
+        const gradTop = ctx.createLinearGradient(0, 0, 0, softBorder);
+        gradTop.addColorStop(0, '#000f');
+        gradTop.addColorStop(1, '#0000');
+        ctx.fillStyle = gradTop;
+        ctx.fillRect(0, 0, c.width, c.height);
+
+        const gradLeft = ctx.createLinearGradient(0, 0, softBorder, 0);
+        gradLeft.addColorStop(0, '#000f');
+        gradLeft.addColorStop(1, '#0000');
+        ctx.fillStyle = gradLeft;
+        ctx.fillRect(0, 0, c.width, c.height);
+
+        const gradBottom = ctx.createLinearGradient(0, c.height, 0, c.height - softBorder);
+        gradBottom.addColorStop(0, '#000f');
+        gradBottom.addColorStop(1, '#0000');
+        ctx.fillStyle = gradBottom;
+        ctx.fillRect(0, 0, c.width, c.height);
+
+        const gradRight = ctx.createLinearGradient(c.width, 0, c.width - softBorder, 0);
+        gradRight.addColorStop(0, '#000f');
+        gradRight.addColorStop(1, '#0000');
+        ctx.fillStyle = gradRight;
+        ctx.fillRect(0, 0, c.width, c.height);
 
         // Eine feiner aufgelöste Texturmap
+        /*
         const cDetailed = document.createElement('canvas');
         cDetailed.width = c.width;
         cDetailed.height = c.height;
@@ -109,6 +145,7 @@ class Asteroid {
 
         ctx.globalAlpha = 0.5;
         ctx.drawImage(cDetailed, 0, 0);
+        */
 
         ctx.globalAlpha = 1;
 
@@ -157,11 +194,11 @@ class Asteroid {
     renderMask({c}) {
         const ctx = c.getContext('2d');
         const grad = ctx.createRadialGradient(
-            c.width / 2, c.height / 2, c.width / 2,
-            c.height / 2, c.width / 2, c.height / 5,
+            c.width / 2, c.height / 2, this.maxDistance,
+            c.height / 2, c.width / 2, c.height / 10,
         )
         grad.addColorStop(0, '#000');
-        grad.addColorStop(1, '#fff');
+        grad.addColorStop(1, '#aaa');
 
         ctx.fillStyle = grad;
         ctx.fillRect(0, 0, c.width, c.height);
@@ -187,12 +224,14 @@ class Asteroid {
         const imageData = ctx.getImageData(0, 0, c.width, c.height);
         const data = imageData.data;
         for (let i = 0; i < data.length; i += 4) {
+            // Abdunkeln
             data[i] = Math.max(0, data[i] - 128) * 2;     // R
             data[i + 1] = Math.max(0, data[i + 1] - 128) * 2; // G
             data[i + 2] = Math.max(0, data[i + 2] - 128) * 2; // B
-            let w = 20;
-            if (data[i] < 128 - (w / 2)) data[i + 3] = 0;
-            if (data[i] >= 128 - (w / 2) && data[i] <= 128 + (w / 2)) {
+
+            // Outline zeichnen
+            if (data[i] < this.outlineMinValue) data[i + 3] = 0;
+            if (data[i] >= this.outlineMinValue && data[i] <= this.outlineMaxValue) {
                 data[i + 0] = 255;
                 data[i + 1] = 255;
                 data[i + 2] = 255;
@@ -265,6 +304,14 @@ class Asteroid {
             -this.size / 2,
             -this.size / 2
         );
+        /*
+        ctxAsteroids.drawImage(
+            this.cRender,
+            // this.cTexture,
+            -this.size / 2,
+            -this.size / 2
+        );
+        */
         ctxAsteroids.restore();
     }
 
@@ -278,7 +325,7 @@ class Asteroid {
 
         // Wrap-around für Bildschirmränder
         let w = this.size / elements.cAsteroids.width;
-        let h= this.size / elements.cAsteroids.height;
+        let h = this.size / elements.cAsteroids.height;
         if (this.position.x < (0 - w / 2)) this.position.x = (1 + w / 2);
         if (this.position.x > (1 + w / 2)) this.position.x = (0 - w / 2);
         if (this.position.y < (0 - h / 2)) this.position.y = (1 + h / 2);

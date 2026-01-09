@@ -9,7 +9,7 @@ const data = {
     numberOfAsteroids: 10,
 
     maxInitSizeAsteroids: 150,
-    minInitSizeAsteroids: 50,
+    minInitSizeAsteroids: 90,
 
     maxSpeedAsteroids: .003,
     maxSpeedPlayers: .01,
