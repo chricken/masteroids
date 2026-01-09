@@ -204,6 +204,58 @@ class Asteroid {
         ctx.fillRect(0, 0, c.width, c.height);
     }
 
+    removeIslands(imageData, width, height) {
+        const data = imageData.data;
+        const visited = new Uint8Array(width * height);
+
+        const floodFill = (startX, startY) => {
+            const stack = [{x: startX, y: startY}];
+
+            while (stack.length > 0) {
+                const {x, y} = stack.pop();
+
+                if (x < 0 || x >= width || y < 0 || y >= height) continue;
+
+                const idx = y * width + x;
+                if (visited[idx]) continue;
+
+                const i = idx * 4;
+                const brightness = data[i];
+
+                // Nur helle Pixel (>= outlineMinValue) werden gefüllt - sie gehören zum Asteroid
+                if (brightness < this.outlineMinValue) continue;
+
+                visited[idx] = 1;
+
+                // 4-Nachbarn
+                stack.push({x: x + 1, y});
+                stack.push({x: x - 1, y});
+                stack.push({x, y: y + 1});
+                stack.push({x, y: y - 1});
+            }
+        };
+
+        // Starte Flood Fill vom Zentrum
+        floodFill(Math.floor(width / 2), Math.floor(height / 2));
+
+        // Alle hellen Pixel die NICHT vom Zentrum aus erreichbar sind = Inseln → transparent
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                const idx = y * width + x;
+                const i = idx * 4;
+                const brightness = data[i];
+
+                // Wenn Pixel hell ist aber NICHT besucht wurde = Insel → transparent
+                if (brightness >= this.outlineMinValue && !visited[idx]) {
+                    data[i] = 0;
+                    data[i + 1] = 0;
+                    data[i + 2] = 0;
+                    data[i + 3] = 0;
+                }
+            }
+        }
+    }
+
     renderFull({c}) {
         const ctx = c.getContext('2d');
 
@@ -228,10 +280,16 @@ class Asteroid {
             data[i] = Math.max(0, data[i] - 128) * 2;     // R
             data[i + 1] = Math.max(0, data[i + 1] - 128) * 2; // G
             data[i + 2] = Math.max(0, data[i + 2] - 128) * 2; // B
+        }
 
-            // Outline zeichnen
-            if (data[i] < this.outlineMinValue) data[i + 3] = 0;
-            if (data[i] >= this.outlineMinValue && data[i] <= this.outlineMaxValue) {
+        // Entferne isolierte Inseln
+        this.removeIslands(imageData, c.width, c.height);
+
+        // Outline zeichnen
+        for (let i = 0; i < data.length; i += 4) {
+            if (data[i] < this.outlineMinValue) {
+                data[i + 3] = 0;
+            } else if (data[i] >= this.outlineMinValue && data[i] <= this.outlineMaxValue) {
                 data[i + 0] = 255;
                 data[i + 1] = 255;
                 data[i + 2] = 255;
@@ -241,6 +299,7 @@ class Asteroid {
                 data[i + 2] = 20;
             }
         }
+
         ctx.putImageData(imageData, 0, 0);
 
         // Reset blend mode
