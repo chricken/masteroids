@@ -20,10 +20,23 @@ class Asteroid {
                     outlineMinValue = 70,
                     outlineMaxValue = 100,
                     displacementStrength = 60,
-                    id = null
+                    id = null,
+                    gridX = 0,
+                    gridY = 0,
                 } = {}) {
 
-        Object.assign(this, {seed1, seed2, seed3, size, zoom, outlineMinValue, outlineMaxValue, displacementStrength});
+        Object.assign(this, {
+            seed1,
+            seed2,
+            seed3,
+            size,
+            zoom,
+            outlineMinValue,
+            outlineMaxValue,
+            displacementStrength,
+            gridX,
+            gridY
+        });
         this.maxDistance = this.size / 2 * .7;
         this.id = id ? id : helpers.createID();
         this.position = {x: Math.random(), y: Math.random()};
@@ -34,6 +47,9 @@ class Asteroid {
         this.radius = size / 2;
         // Die Gesundheit ergibt sich aus der Größe, weil je nach Schuss immer ein Teile aus dem Asteroiden heraus gesprengt wird
         this.isActive = true;
+
+        // An Grid anhängen
+        //this.assignGrid();
 
         // Hierauf wird die Textur aus der Perlin Map generiert
         this.cTexture = document.createElement('canvas');
@@ -150,6 +166,121 @@ class Asteroid {
 
         // hier noch eine zweite ebene
         // und ein displacement
+    }
+
+    draw() {
+        const ctxAsteroids = elements.cAsteroids.getContext('2d');
+
+        const x = this.position.x * elements.cAsteroids.width;
+        const y = this.position.y * elements.cAsteroids.height;
+
+        ctxAsteroids.save();
+        ctxAsteroids.translate(x, y);
+        ctxAsteroids.rotate(this.rotation);
+        ctxAsteroids.drawImage(
+            this.cMask,
+            // this.cRender,
+            // this.cTexture,
+            -this.size / 2,
+            -this.size / 2
+        );
+        /*
+        ctxAsteroids.drawImage(
+            this.cRender,
+            // this.cTexture,
+            -this.size / 2,
+            -this.size / 2
+        );
+        */
+        ctxAsteroids.restore();
+
+        /*
+        ctxAsteroids.fillStyle = '#f00';
+        ctxAsteroids.font = '30px Tahoma, Geneva, Verdana, sans-serif';
+        ctxAsteroids.fillText(
+            `${this.gridX}, ${this.gridY}`,
+            this.position.x * elements.cAsteroids.width,
+            this.position.y * elements.cAsteroids.height
+        )
+
+         */
+
+    }
+
+    hit(projectile) {
+        let pX = projectile.posX;
+        let pY = projectile.posY;
+
+        // Convert projectile position from pixels to fractions of the canvas size
+        const projectileFractionX = pX / elements.cAsteroids.width;
+        const projectileFractionY = pY / elements.cAsteroids.height;
+
+        // Calculate the relative position of the projectile with respect to the asteroid
+        const relativeX = (projectileFractionX - this.position.x) * this.size;
+        const relativeY = (projectileFractionY - this.position.y) * this.size;
+
+        // Adjust for the asteroid's rotation
+        const angle = -this.rotation;
+        const rotatedX = relativeX * Math.cos(angle) - relativeY * Math.sin(angle);
+        const rotatedY = relativeX * Math.sin(angle) + relativeY * Math.cos(angle);
+
+        // Calculate the position on the cMask canvas
+        const maskX = this.size / 2 + rotatedX;
+        const maskY = this.size / 2 + rotatedY;
+
+        console.log(maskX, maskY);
+
+        // Draw a black circle on the cMask canvas
+        const ctxMask = this.cMask.getContext('2d');
+        ctxMask.globalCompositeOperation = 'source-over';
+        ctxMask.beginPath();
+        ctxMask.arc(maskX, maskY, 10, 0, Math.PI * 2);
+        ctxMask.fillStyle = 'black';
+        ctxMask.fill();
+
+        this.renderFull({c: this.cRender})
+    }
+
+    update() {
+        this.assignGrid();
+        // Aktualisiere Rotation
+        this.rotation += this.rotationSpeed;
+
+        // Berechne neue Position basierend auf Winkel und Geschwindigkeit
+        this.position.x += Math.cos(this.angle) * this.velocity;
+        this.position.y += Math.sin(this.angle) * this.velocity;
+
+        // Wrap-around für Bildschirmränder
+        let w = this.size / elements.cAsteroids.width;
+        let h = this.size / elements.cAsteroids.height;
+        if (this.position.x < (0 - w / 2)) this.position.x = (1 + w / 2);
+        if (this.position.x > (1 + w / 2)) this.position.x = (0 - w / 2);
+        if (this.position.y < (0 - h / 2)) this.position.y = (1 + h / 2);
+        if (this.position.y > (1 + h / 2)) this.position.y = (0 - h / 2);
+    }
+
+    assignGrid() {
+        // Berechnen, in welchem Grid der Asteroid liegt (optimiert)
+        let gridX = Math.floor(this.position.x * data.numGrid);
+        let gridY = Math.floor(this.position.y * data.numGrid);
+
+        // Clamp in einem Schritt
+        gridX = Math.min(Math.max(gridX, 0), data.numGrid - 1);
+        gridY = Math.min(Math.max(gridY, 0), data.numGrid - 1);
+
+        // vom bisherigen Grid in neuen Grid verschieben
+        if (this.gridX !== gridX || this.gridY !== gridY) {
+            let oldGrid = data.grid[this.gridX][this.gridY].asteroids;
+
+            // Schnellerer Remove: splice mit 2. Parameter
+            let oldIndex = oldGrid.indexOf(this);
+            if (oldIndex !== -1) oldGrid.splice(oldIndex, 1);
+
+            // Gridbox umstellen und Asteroid hier einhängen
+            this.gridX = gridX;
+            this.gridY = gridY;
+            data.grid[gridX][gridY].asteroids.push(this);
+        }
     }
 
     renderDisplacementMap(c) {
@@ -322,6 +453,11 @@ class Asteroid {
             }
         }
 
+        // Invert the mask  back
+        ctxMask.globalCompositeOperation = 'difference';
+        ctxMask.fillStyle = '#fff';
+        ctxMask.fillRect(0, 0, this.cMask.width, this.cMask.height);
+
         // Reset blend mode
         ctx.globalCompositeOperation = 'source-over';
     }
@@ -366,49 +502,6 @@ class Asteroid {
         }
 
         targetCtx.putImageData(targetData, 0, 0);
-    }
-
-    draw() {
-        const ctxAsteroids = elements.cAsteroids.getContext('2d');
-
-        const x = this.position.x * elements.cAsteroids.width;
-        const y = this.position.y * elements.cAsteroids.height;
-
-        ctxAsteroids.save();
-        ctxAsteroids.translate(x, y);
-        ctxAsteroids.rotate(this.rotation);
-        ctxAsteroids.drawImage(
-            this.cRender,
-            // this.cTexture,
-            -this.size / 2,
-            -this.size / 2
-        );
-        /*
-        ctxAsteroids.drawImage(
-            this.cRender,
-            // this.cTexture,
-            -this.size / 2,
-            -this.size / 2
-        );
-        */
-        ctxAsteroids.restore();
-    }
-
-    update() {
-        // Aktualisiere Rotation
-        this.rotation += this.rotationSpeed;
-
-        // Berechne neue Position basierend auf Winkel und Geschwindigkeit
-        this.position.x += Math.cos(this.angle) * this.velocity;
-        this.position.y += Math.sin(this.angle) * this.velocity;
-
-        // Wrap-around für Bildschirmränder
-        let w = this.size / elements.cAsteroids.width;
-        let h = this.size / elements.cAsteroids.height;
-        if (this.position.x < (0 - w / 2)) this.position.x = (1 + w / 2);
-        if (this.position.x > (1 + w / 2)) this.position.x = (0 - w / 2);
-        if (this.position.y < (0 - h / 2)) this.position.y = (1 + h / 2);
-        if (this.position.y > (1 + h / 2)) this.position.y = (0 - h / 2);
     }
 
 }

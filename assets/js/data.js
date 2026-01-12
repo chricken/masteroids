@@ -6,7 +6,7 @@ let numGrid = 10;
 const data = {
     tickInterval: 30,
     idGameInterval: null,
-    numberOfAsteroids: 10,
+    numberOfAsteroids: 20,
 
     maxInitSizeAsteroids: 150,
     minInitSizeAsteroids: 90,
@@ -19,10 +19,24 @@ const data = {
     asteroids: [],
     debris: [],
     projectiles: [],
-    // 2-Dimensionales Raster
-    raster: new Array(numGrid).fill(new Array(numGrid)),
     stations: [],
-    enemies: []
+    enemies: [],
+
+    // 2-Dimensionales Raster
+    // Jedes Rasterelement enthält Arrays für jeden Elemententyp
+    // fill() hat nur ein Array erzeugt und dieses dann referenziert
+    grid: [...new Array(numGrid)].map(() =>
+        [...new Array(numGrid)].map(() => {
+                return {
+                    asteroids: [],
+                    projectiles: [],
+                    debris: [],
+                    stations: [],
+                    enemies: []
+                }
+            }
+        )
+    ),
 }
 
 export default data;
