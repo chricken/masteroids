@@ -27,6 +27,7 @@ class Projectile {
         this.renderSprite();
 
         data.projectiles.push(this);
+        this.assignGrid();
     }
 
     renderSprite() {
@@ -85,18 +86,41 @@ class Projectile {
     }
 
     hitTest() {
-        let boxAsteroid = data.grid[this.gridX][this.gridY].asteroids;
-        for (let i = 0; i < boxAsteroid.length; i++) {
-            const ast = boxAsteroid[i];
-            let distance = Math.hypot(
-                (ast.position.x * elements.cAsteroids.width) - this.posX,
-                (ast.position.y * elements.cAsteroids.height) - this.posY,
-            )
-            // console.log(ast.radius, distance);
-            if (distance < ast.radius) {
-                if (ast.hit(this)) {
-                    this.destroy();
-                    return false;
+        // Vorberechnete Werte für die innere Schleife
+        const canvasWidth = elements.cAsteroids.width;
+        const canvasHeight = elements.cAsteroids.height;
+        const pX = this.posX;
+        const pY = this.posY;
+        const maxGrid = data.numGrid - 1;
+
+        // Grid-Grenzen vorberechnen (clamp)
+        const minX = Math.max(0, this.gridX - 1);
+        const maxX = Math.min(maxGrid, this.gridX + 1);
+        const minY = Math.max(0, this.gridY - 1);
+        const maxY = Math.min(maxGrid, this.gridY + 1);
+
+        // Nur relevante Felder durchlaufen
+        for (let y = minY; y <= maxY; y++) {
+            for (let x = minX; x <= maxX; x++) {
+                let boxAsteroid = data.grid[x][y].asteroids;
+                let len = boxAsteroid.length;
+
+                for (let i = 0; i < len; i++) {
+                    const ast = boxAsteroid[i];
+
+                    // Distanz ohne Math.hypot (schneller)
+                    const dx = (ast.position.x * canvasWidth) - pX;
+                    const dy = (ast.position.y * canvasHeight) - pY;
+                    const distSq = dx * dx + dy * dy;
+                    const radiusSq = ast.radius * ast.radius;
+
+                    // Quadrierte Distanz-Vergleich (spart sqrt)
+                    if (distSq < radiusSq) {
+                        if (ast.hit(this)) {
+                            this.destroy();
+                            return false;
+                        }
+                    }
                 }
             }
         }

@@ -7,6 +7,8 @@ import noise from '../noise.js';
 import Debris from './Debris.js';
 import data from "../data.js";
 
+let count = 0;
+
 class Asteroid {
     constructor({
                     seed1 = Math.random() * 1e17,
@@ -185,17 +187,20 @@ class Asteroid {
             -this.size / 2
         );
 
-
+        /*
         ctxAsteroids.beginPath();
         ctxAsteroids.arc(0, 0, this.radius, 0, 2 * Math.PI);
         ctxAsteroids.strokeStyle = '#555';
         ctxAsteroids.stroke();
+        */
 
         ctxAsteroids.restore();
 
     }
 
     hit(projectile) {
+
+        // console.time(`hit_${count}`);
         let pX = projectile.posX;
         let pY = projectile.posY;
 
@@ -217,7 +222,15 @@ class Asteroid {
         let pixel = ctxRender.getImageData(maskX, maskY, 1, 1);
 
         // console.log(pixel.data);
-        if (pixel.data[3] < 100) return false;
+        if (pixel.data[3] < 200) {
+            /*
+            pixel.data[0] = 255;
+            pixel.data[3] = 255;
+            ctxRender.putImageData(pixel,maskX, maskY);
+             */
+            return false;
+        }
+
 
         // Draw a black circle on the cMask canvas
         ctxRender.globalCompositeOperation = 'destination-out';
@@ -237,6 +250,9 @@ class Asteroid {
         ctxRender.fill();
 
         ctxRender.globalCompositeOperation = 'source-over';
+
+        // console.timeEnd(`hit_${count}`);
+        count++
         // this.renderFull({c: this.cRender})
         return true;
     }
