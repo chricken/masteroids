@@ -178,32 +178,20 @@ class Asteroid {
         ctxAsteroids.translate(x, y);
         ctxAsteroids.rotate(this.rotation);
         ctxAsteroids.drawImage(
-            this.cMask,
-            // this.cRender,
-            // this.cTexture,
-            -this.size / 2,
-            -this.size / 2
-        );
-        /*
-        ctxAsteroids.drawImage(
+            // this.cMask,
             this.cRender,
             // this.cTexture,
             -this.size / 2,
             -this.size / 2
         );
-        */
+
+
+        ctxAsteroids.beginPath();
+        ctxAsteroids.arc(0, 0, this.radius, 0, 2 * Math.PI);
+        ctxAsteroids.strokeStyle = '#555';
+        ctxAsteroids.stroke();
+
         ctxAsteroids.restore();
-
-        /*
-        ctxAsteroids.fillStyle = '#f00';
-        ctxAsteroids.font = '30px Tahoma, Geneva, Verdana, sans-serif';
-        ctxAsteroids.fillText(
-            `${this.gridX}, ${this.gridY}`,
-            this.position.x * elements.cAsteroids.width,
-            this.position.y * elements.cAsteroids.height
-        )
-
-         */
 
     }
 
@@ -211,13 +199,9 @@ class Asteroid {
         let pX = projectile.posX;
         let pY = projectile.posY;
 
-        // Convert projectile position from pixels to fractions of the canvas size
-        const projectileFractionX = pX / elements.cAsteroids.width;
-        const projectileFractionY = pY / elements.cAsteroids.height;
-
-        // Calculate the relative position of the projectile with respect to the asteroid
-        const relativeX = (projectileFractionX - this.position.x) * this.size;
-        const relativeY = (projectileFractionY - this.position.y) * this.size;
+        // Die Differenz sollte erst in Canvas-Pixeln berechnet werden
+        const relativeX = pX - (this.position.x * elements.cAsteroids.width);
+        const relativeY = pY - (this.position.y * elements.cAsteroids.height);
 
         // Adjust for the asteroid's rotation
         const angle = -this.rotation;
@@ -228,17 +212,33 @@ class Asteroid {
         const maskX = this.size / 2 + rotatedX;
         const maskY = this.size / 2 + rotatedY;
 
-        console.log(maskX, maskY);
+        // Wenn am Einschlagpunkt kein gefüllter Pixel liegt, abbrechen
+        const ctxRender = this.cRender.getContext('2d');
+        let pixel = ctxRender.getImageData(maskX, maskY, 1, 1);
+
+        // console.log(pixel.data);
+        if (pixel.data[3] < 100) return false;
 
         // Draw a black circle on the cMask canvas
-        const ctxMask = this.cMask.getContext('2d');
-        ctxMask.globalCompositeOperation = 'source-over';
-        ctxMask.beginPath();
-        ctxMask.arc(maskX, maskY, 10, 0, Math.PI * 2);
-        ctxMask.fillStyle = 'black';
-        ctxMask.fill();
+        ctxRender.globalCompositeOperation = 'destination-out';
+        ctxRender.beginPath();
+        // ctxRender.arc(maskX, maskY, 10, 0, Math.PI * 2);
+        for (let i = 0; i < Math.PI * 2; i += Math.PI / 10) {
+            let dist = Math.random() * 10 + 5;
+            let x = maskX + Math.cos(i) * dist;
+            let y = maskY + Math.sin(i) * dist;
+            if (i === 0) {
+                ctxRender.moveTo(x, y);
+            } else {
+                ctxRender.lineTo(x, y);
+            }
+        }
+        ctxRender.fillStyle = 'rgba(0,0,0,255)';
+        ctxRender.fill();
 
-        this.renderFull({c: this.cRender})
+        ctxRender.globalCompositeOperation = 'source-over';
+        // this.renderFull({c: this.cRender})
+        return true;
     }
 
     update() {
@@ -332,6 +332,8 @@ class Asteroid {
 
         ctx.fillStyle = grad;
         ctx.fillRect(0, 0, c.width, c.height);
+
+
     }
 
     removeIslands(c) {

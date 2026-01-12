@@ -17,6 +17,7 @@ const render = {
             elements.cAsteroids.height
         );
 
+        /*
         const ctx = elements.cAsteroids.getContext('2d');
         const gridWidth = Math.floor(elements.cAsteroids.width / data.numGrid);
         const gridHeight = Math.floor(elements.cAsteroids.height / data.numGrid);
@@ -29,6 +30,7 @@ const render = {
             ctx.lineTo( elements.cAsteroids.width, i*gridHeight);
         }
         ctx.stroke()
+        */
 
         data.asteroids.forEach(asteroid => {
             asteroid.update();

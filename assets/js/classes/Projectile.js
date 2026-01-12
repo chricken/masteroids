@@ -57,6 +57,7 @@ class Projectile {
         ctx.drawImage(this.c, -this.c.width / 2, -this.c.height / 2);
         ctx.restore();
 
+        /*
         ctx.fillStyle = '#ff0';
         ctx.font = '30px Tahoma, Geneva, Verdana, sans-serif';
         ctx.fillText(
@@ -64,6 +65,7 @@ class Projectile {
             this.posX,
             this.posY
         )
+        */
     }
 
     update() {
@@ -91,10 +93,10 @@ class Projectile {
                 (ast.position.y * elements.cAsteroids.height) - this.posY,
             )
             // console.log(ast.radius, distance);
-            if (distance < ast.radius / 2) {
-                this.destroy();
-                // return false;
+            if (distance < ast.radius) {
                 if (ast.hit(this)) {
+                    this.destroy();
+                    return false;
                 }
             }
         }
@@ -103,13 +105,10 @@ class Projectile {
     destroy() {
         let index = data.projectiles.indexOf(this);
         data.projectiles.splice(index, 1);
-        console.log(index);
 
         let gProj = data.grid[this.gridX][this.gridY].projectiles;
         index = gProj.indexOf(this);
         gProj.splice(index, 1);
-        console.log(index);
-
     }
 
     assignGrid() {
