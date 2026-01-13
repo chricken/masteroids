@@ -211,16 +211,14 @@ class Asteroid {
             })
         }
 
-        // Abgetrennte Teile entfernen
-
+        // Abgetrennte Teile als neue Asteroiden erstellen
+        const newFragments = this.splitAsteroid();
+        // Die neuen Fragmente werden bereits im Constructor zu data.asteroids hinzugefügt
 
         count++
         return true;
     }
 
-    checkDivision() {
-
-    }
 
     update() {
         this.assignGrid();
@@ -412,6 +410,183 @@ class Asteroid {
 
 
     }
+
+    splitAsteroid() {
+        const ctxRender = this.cRender.getContext('2d');
+        const imageData = ctxRender.getImageData(0, 0, this.cRender.width, this.cRender.height);
+        const pixelData = imageData.data; // Umbenennen um Konflikt zu vermeiden!
+        const visited = new Array(this.cRender.width * this.cRender.height).fill(false);
+
+        const isFilled = (x, y) => {
+            const idx = (y * this.cRender.width + x) * 4;
+            return pixelData[idx + 3] > 200; // pixelData statt data
+        };
+
+        // Iterativer Flood-Fill
+        const floodFill = (startX, startY) => {
+            const region = [];
+            const stack = [{x: startX, y: startY}];
+
+            while (stack.length > 0) {
+                const {x, y} = stack.pop();
+
+                if (x < 0 || x >= this.cRender.width || y < 0 || y >= this.cRender.height) continue;
+
+                const idx = y * this.cRender.width + x;
+                if (visited[idx] || !isFilled(x, y)) continue;
+
+                visited[idx] = true;
+                region.push({x, y});
+
+                stack.push({x: x + 1, y}, {x: x - 1, y}, {x, y: y + 1}, {x, y: y - 1});
+            }
+
+            return region;
+        };
+
+        // Finde alle Regionen
+        const regions = [];
+        for (let y = 0; y < this.cRender.height; y++) {
+            for (let x = 0; x < this.cRender.width; x++) {
+                const idx = y * this.cRender.width + x;
+                if (!visited[idx] && isFilled(x, y)) {
+                    const region = floodFill(x, y);
+                    if (region.length > 50) { // Minimale Größe
+                        regions.push(region);
+                    }
+                }
+            }
+        }
+
+        // Wenn nur eine Region oder keine Trennung: nichts tun
+        if (regions.length <= 1) {
+            return [];
+        }
+
+        // Sortiere nach Größe
+        regions.sort((a, b) => b.length - a.length);
+
+        const newAsteroids = [];
+
+        // Verarbeite jede Region
+        for (let i = 0; i < regions.length; i++) {
+            const region = regions[i];
+
+            // Berechne Bounding Box
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+            for (const {x, y} of region) {
+                minX = Math.min(minX, x);
+                minY = Math.min(minY, y);
+                maxX = Math.max(maxX, x);
+                maxY = Math.max(maxY, y);
+            }
+
+            const width = maxX - minX + 1;
+            const height = maxY - minY + 1;
+            const size = Math.max(width, height);
+
+            // Erstelle neues Canvas für dieses Fragment
+            const fragmentCanvas = document.createElement('canvas');
+            fragmentCanvas.width = size;
+            fragmentCanvas.height = size;
+            const fragmentCtx = fragmentCanvas.getContext('2d');
+            const fragmentImageData = fragmentCtx.createImageData(size, size);
+            const fragmentData = fragmentImageData.data;
+
+            // Kopiere die Pixel (zentriert im neuen Canvas)
+            const offsetX = Math.floor((size - width) / 2) - minX;
+            const offsetY = Math.floor((size - height) / 2) - minY;
+
+            for (const {x, y} of region) {
+                const srcIdx = (y * this.cRender.width + x) * 4;
+                const destX = x + offsetX;
+                const destY = y + offsetY;
+                const destIdx = (destY * size + destX) * 4;
+
+                // Kopiere RGBA-Werte (verwende pixelData!)
+                fragmentData[destIdx] = pixelData[srcIdx];
+                fragmentData[destIdx + 1] = pixelData[srcIdx + 1];
+                fragmentData[destIdx + 2] = pixelData[srcIdx + 2];
+                fragmentData[destIdx + 3] = pixelData[srcIdx + 3];
+            }
+
+            fragmentCtx.putImageData(fragmentImageData, 0, 0);
+
+            // Berechne Weltposition des Fragment-Zentrums
+            const regionCenterX = (minX + maxX) / 2;
+            const regionCenterY = (minY + maxY) / 2;
+
+            // Offset vom Original-Zentrum (in Canvas-Pixeln)
+            const offsetFromCenterX = regionCenterX - this.size / 2;
+            const offsetFromCenterY = regionCenterY - this.size / 2;
+
+            // Rotiere den Offset entsprechend der Asteroid-Rotation
+            const cos = Math.cos(this.rotation);
+            const sin = Math.sin(this.rotation);
+            const rotatedOffsetX = (offsetFromCenterX * cos - offsetFromCenterY * sin) / elements.cAsteroids.width;
+            const rotatedOffsetY = (offsetFromCenterX * sin + offsetFromCenterY * cos) / elements.cAsteroids.height;
+
+            if (i === 0) {
+                // Größtes Fragment: Update den aktuellen Asteroiden
+                this.cRender.width = size;
+                this.cRender.height = size;
+                this.cRender.getContext('2d').drawImage(fragmentCanvas, 0, 0);
+                this.size = size;
+                this.radius = size / 2;
+                this.position.x += rotatedOffsetX;
+                this.position.y += rotatedOffsetY;
+            } else {
+                // Kleinere Fragmente: Neue Asteroiden erstellen
+                const newAsteroid = Object.create(Object.getPrototypeOf(this));
+
+                // Kopiere Eigenschaften manuell (ohne Constructor)
+                newAsteroid.seed1 = this.seed1;
+                newAsteroid.seed2 = this.seed2;
+                newAsteroid.seed3 = this.seed3;
+                newAsteroid.zoom = this.zoom;
+                newAsteroid.outlineMinValue = this.outlineMinValue;
+                newAsteroid.outlineMaxValue = this.outlineMaxValue;
+                newAsteroid.displacementStrength = this.displacementStrength;
+                newAsteroid.id = helpers.createID();
+                newAsteroid.isActive = true;
+
+                // Canvas-Daten
+                newAsteroid.size = size;
+                newAsteroid.radius = size / 2;
+                newAsteroid.maxDistance = size / 2 * 0.7;
+
+                // Verwende das Fragment-Canvas
+                newAsteroid.cRender = fragmentCanvas;
+                newAsteroid.cTexture = this.cTexture;
+                newAsteroid.cMask = this.cMask;
+
+                // Position
+                newAsteroid.position = {
+                    x: this.position.x + rotatedOffsetX,
+                    y: this.position.y + rotatedOffsetY
+                };
+
+                // Bewegung (mit Variation)
+                newAsteroid.velocity = this.velocity * (0.9 + Math.random() * 0.2);
+                newAsteroid.angle = this.angle + (Math.random() - 0.5) * 0.3;
+                newAsteroid.rotation = this.rotation + (Math.random() - 0.5) * 0.5;
+                newAsteroid.rotationSpeed = this.rotationSpeed * (0.8 + Math.random() * 0.4);
+
+                // Grid
+                newAsteroid.gridX = this.gridX;
+                newAsteroid.gridY = this.gridY;
+
+                // Zu data.asteroids und Grid hinzufügen (verwende das globale data Objekt!)
+                data.asteroids.push(newAsteroid);
+                data.grid[newAsteroid.gridX][newAsteroid.gridY].asteroids.push(newAsteroid);
+
+                newAsteroids.push(newAsteroid);
+            }
+        }
+
+        return newAsteroids;
+    }
+
     removeIslands(c) {
         const ctx = c.getContext('2d');
         const imgData = ctx.getImageData(0, 0, c.width, c.height);
