@@ -57,7 +57,6 @@ export default class Debris {
             default:
                 color = '#FFFFFF';
         }
-        console.log(color);
 
         this.ctx.beginPath();
         // this.ctx.arc(this.position.x, this.position.y, this.size, 0, Math.PI * 2);

@@ -25,6 +25,9 @@ class Asteroid {
                     id = null,
                     gridX = 0,
                     gridY = 0,
+                    splitThreshold = .2,
+                    minFragmentPixels = 200,
+                    thresholdAsteroidByHit = .2,
                 } = {}) {
 
         Object.assign(this, {
@@ -37,7 +40,10 @@ class Asteroid {
             outlineMaxValue,
             displacementStrength,
             gridX,
-            gridY
+            gridY,
+            splitThreshold,
+            minFragmentPixels,
+            thresholdAsteroidByHit
         });
         this.maxDistance = this.size / 2 * .7;
         this.id = id ? id : helpers.createID();
@@ -211,15 +217,340 @@ class Asteroid {
             })
         }
 
-        // Abgetrennte Teile entfernen
+        // Abgetrennte Teile als neue Asteroiden erstellen
+        const newFragments = this.splitAsteroid(projectile, maskX, maskY);
+
+        // Prüfe ob mindestens ein Fragment groß genug ist
+        const largeEnoughFragment = this.countSolidPixels(this.cRender) > this.minFragmentPixels * 3
+        console.log(largeEnoughFragment, this.minFragmentPixels * 3);
+
+        if (largeEnoughFragment && Math.random() < this.thresholdAsteroidByHit) {
+            // if (Math.random() < this.thresholdAsteroidByHit) {
+            // Erstelle einen kleinen Asteroiden am Einschlagpunkt
+            const fragmentSize = helpers.createNumber(30, 60);
+
+            const newFragment = new Asteroid({
+                size: fragmentSize,
+                zoom: this.zoom,
+                outlineMinValue: this.outlineMinValue,
+                outlineMaxValue: this.outlineMaxValue,
+                displacementStrength: this.displacementStrength,
+            });
+
+            // Position: Konvertiere maskX/maskY (lokale Canvas-Coords) in Weltkoordinaten
+            const cos = Math.cos(this.rotation);
+            const sin = Math.sin(this.rotation);
+            const localX = maskX - this.cRender.width / 2;
+            const localY = maskY - this.cRender.height / 2;
+            const rotatedX = localX * cos - localY * sin;
+            const rotatedY = localX * sin + localY * cos;
+
+            newFragment.position.x = this.position.x + (rotatedX / elements.cAsteroids.width);
+            newFragment.position.y = this.position.y + (rotatedY / elements.cAsteroids.height);
+
+            // Bewegung: Kombination aus Original-Asteroid und Projektil-Richtung
+            const projectileInfluence = 0.1;
+            const asteroidVelX = Math.cos(this.angle) * this.velocity;
+            const asteroidVelY = Math.sin(this.angle) * this.velocity;
+            const projectileVelX = Math.cos(projectile.direction) * projectile.speed * 0.5;
+            const projectileVelY = Math.sin(projectile.direction) * projectile.speed * 0.5;
+
+            const newVelX = asteroidVelX * (1 - projectileInfluence) + projectileVelX * projectileInfluence;
+            const newVelY = asteroidVelY * (1 - projectileInfluence) + projectileVelY * projectileInfluence;
+
+            newFragment.velocity = Math.sqrt(newVelX * newVelX + newVelY * newVelY) * (0.8 + Math.random() * 0.4);
+            newFragment.angle = Math.atan2(newVelY, newVelX) + (Math.random() - 0.5) * 0.8;
+            newFragment.rotationSpeed = (Math.random() - 0.5) * 0.05;
+
+            // Grid zuweisen
+            data.asteroids.push(newFragment);
+            newFragment.assignGrid();
+
+        }
 
 
         count++
         return true;
     }
 
-    checkDivision() {
+    // Hilfsfunktion: Zähle nicht-transparente Pixel
+    countSolidPixels(canvas) {
+        const ctx = canvas.getContext('2d');
+        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imgData.data;
+        let count = 0;
 
+        for (let i = 3; i < data.length; i += 4) {
+            if (data[i] > 200) {
+                count++;
+            }
+        }
+
+        return count;
+    }
+
+    splitAsteroid(projectile, maskX, maskY) {
+        const ctxRender = this.cRender.getContext('2d');
+        const imageData = ctxRender.getImageData(0, 0, this.cRender.width, this.cRender.height);
+        const pixelData = imageData.data;
+
+        // 1. Scanline entlang der Projektil-Richtung vom Einschlagpunkt
+        const dirX = Math.cos(projectile.direction);
+        const dirY = Math.sin(projectile.direction);
+
+        let solidPixelCount = 0;
+        const maxScanDistance = Math.max(this.cRender.width, this.cRender.height);
+
+        for (let dist = -maxScanDistance; dist < maxScanDistance; dist++) {
+            const scanX = Math.round(maskX + dirX * dist);
+            const scanY = Math.round(maskY + dirY * dist);
+
+            if (scanX < 0 || scanX >= this.cRender.width ||
+                scanY < 0 || scanY >= this.cRender.height) {
+                continue;
+            }
+
+            const idx = (scanY * this.cRender.width + scanX) * 4;
+            if (pixelData[idx + 3] > 200) {
+                solidPixelCount++;
+            }
+        }
+
+        // 2. Threshold prüfen
+        const threshold = this.size * 0.15;
+
+        if (solidPixelCount > threshold) {
+            return [];
+        }
+
+        // 3. Asteroid teilen
+        const perpX = -dirY;
+        const perpY = dirX;
+
+        const canvas1 = document.createElement('canvas');
+        canvas1.width = this.cRender.width;
+        canvas1.height = this.cRender.height;
+        const ctx1 = canvas1.getContext('2d');
+        const imageData1 = ctx1.createImageData(canvas1.width, canvas1.height);
+        const data1 = imageData1.data;
+
+        const canvas2 = document.createElement('canvas');
+        canvas2.width = this.cRender.width;
+        canvas2.height = this.cRender.height;
+        const ctx2 = canvas2.getContext('2d');
+        const imageData2 = ctx2.createImageData(canvas2.width, canvas2.height);
+        const data2 = imageData2.data;
+
+        for (let y = 0; y < this.cRender.height; y++) {
+            for (let x = 0; x < this.cRender.width; x++) {
+                const idx = (y * this.cRender.width + x) * 4;
+
+                if (pixelData[idx + 3] < 50) continue;
+
+                const dx = x - maskX;
+                const dy = y - maskY;
+                const side = dx * perpX + dy * perpY;
+
+                if (side < 0) {
+                    data1[idx] = pixelData[idx];
+                    data1[idx + 1] = pixelData[idx + 1];
+                    data1[idx + 2] = pixelData[idx + 2];
+                    data1[idx + 3] = pixelData[idx + 3];
+                } else {
+                    data2[idx] = pixelData[idx];
+                    data2[idx + 1] = pixelData[idx + 1];
+                    data2[idx + 2] = pixelData[idx + 2];
+                    data2[idx + 3] = pixelData[idx + 3];
+                }
+            }
+        }
+
+        ctx1.putImageData(imageData1, 0, 0);
+        ctx2.putImageData(imageData2, 0, 0);
+
+
+        // Hilfsfunktion: Erzeuge Debris aus Fragment
+        const createDebrisFromFragment = (canvas) => {
+            const ctx = canvas.getContext('2d');
+            const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const fragmentData = imgData.data;
+            const debrisCount = helpers.createNumber(8, 15);
+
+            for (let i = 0; i < debrisCount; i++) {
+                let foundPixel = false;
+                let attempts = 0;
+
+                while (!foundPixel && attempts < 50) {
+                    const randX = Math.floor(Math.random() * canvas.width);
+                    const randY = Math.floor(Math.random() * canvas.height);
+                    const idx = (randY * canvas.width + randX) * 4;
+
+                    if (fragmentData[idx + 3] > 200) {
+                        const cos = Math.cos(this.rotation);
+                        const sin = Math.sin(this.rotation);
+                        const localX = randX - canvas.width / 2;
+                        const localY = randY - canvas.height / 2;
+                        const rotatedX = localX * cos - localY * sin;
+                        const rotatedY = localX * sin + localY * cos;
+
+                        const worldX = (this.position.x * elements.cAsteroids.width) + rotatedX;
+                        const worldY = (this.position.y * elements.cAsteroids.height) + rotatedY;
+
+                        new Debris({
+                            x: worldX,
+                            y: worldY,
+                            size: helpers.createNumber(2, 8),
+                        });
+
+                        foundPixel = true;
+                    }
+                    attempts++;
+                }
+            }
+        };
+
+        // Prüfe beide Fragmente einzeln
+        const minFragmentPixels = 500;
+        const canvas1PixelCount = this.countSolidPixels(canvas1);
+        const canvas2PixelCount = this.countSolidPixels(canvas2);
+
+        const newAsteroids = [];
+
+        // Fragment 1 verarbeiten
+        if (canvas1PixelCount < minFragmentPixels) {
+            // Zu klein: Erzeuge Debris
+            createDebrisFromFragment(canvas1);
+        } else {
+            // Groß genug: Erstelle Asteroiden
+            const newAsteroid = Object.create(Object.getPrototypeOf(this));
+
+            newAsteroid.seed1 = this.seed1;
+            newAsteroid.seed2 = this.seed2;
+            newAsteroid.seed3 = this.seed3;
+            newAsteroid.zoom = this.zoom;
+            newAsteroid.outlineMinValue = this.outlineMinValue;
+            newAsteroid.outlineMaxValue = this.outlineMaxValue;
+            newAsteroid.displacementStrength = this.displacementStrength;
+            newAsteroid.id = helpers.createID();
+            newAsteroid.isActive = true;
+
+            newAsteroid.size = this.size;
+            newAsteroid.radius = this.radius;
+            newAsteroid.maxDistance = this.maxDistance;
+
+            newAsteroid.cRender = canvas1;
+            newAsteroid.cTexture = document.createElement('canvas');
+            newAsteroid.cTexture.width = this.size;
+            newAsteroid.cTexture.height = this.size;
+            newAsteroid.cMask = document.createElement('canvas');
+            newAsteroid.cMask.width = this.size;
+            newAsteroid.cMask.height = this.size;
+
+            newAsteroid.position = {
+                x: this.position.x,
+                y: this.position.y
+            };
+
+            const spreadSpeed = 0.0005;
+            const perpAngle = Math.atan2(perpY, perpX);
+            const velX = Math.cos(this.angle) * this.velocity;
+            const velY = Math.sin(this.angle) * this.velocity;
+            const spreadX = Math.cos(perpAngle) * spreadSpeed * -1;
+            const spreadY = Math.sin(perpAngle) * spreadSpeed * -1;
+
+            const newVelX = velX + spreadX;
+            const newVelY = velY + spreadY;
+            newAsteroid.velocity = Math.sqrt(newVelX * newVelX + newVelY * newVelY);
+            newAsteroid.angle = Math.atan2(newVelY, newVelX);
+            newAsteroid.rotation = this.rotation + (Math.random() - 0.5) * 0.3;
+            newAsteroid.rotationSpeed = this.rotationSpeed * (0.8 + Math.random() * 0.4);
+
+            newAsteroid.gridX = this.gridX;
+            newAsteroid.gridY = this.gridY;
+
+            data.asteroids.push(newAsteroid);
+            data.grid[newAsteroid.gridX][newAsteroid.gridY].asteroids.push(newAsteroid);
+
+            newAsteroids.push(newAsteroid);
+        }
+
+        // Fragment 2 verarbeiten
+        if (canvas2PixelCount < minFragmentPixels) {
+            // Zu klein: Erzeuge Debris
+            createDebrisFromFragment(canvas2);
+        } else {
+            // Groß genug: Erstelle Asteroiden
+            const newAsteroid = Object.create(Object.getPrototypeOf(this));
+
+            newAsteroid.seed1 = this.seed1;
+            newAsteroid.seed2 = this.seed2;
+            newAsteroid.seed3 = this.seed3;
+            newAsteroid.zoom = this.zoom;
+            newAsteroid.outlineMinValue = this.outlineMinValue;
+            newAsteroid.outlineMaxValue = this.outlineMaxValue;
+            newAsteroid.displacementStrength = this.displacementStrength;
+            newAsteroid.id = helpers.createID();
+            newAsteroid.isActive = true;
+
+            newAsteroid.size = this.size;
+            newAsteroid.radius = this.radius;
+            newAsteroid.maxDistance = this.maxDistance;
+
+            newAsteroid.cRender = canvas2;
+            newAsteroid.cTexture = document.createElement('canvas');
+            newAsteroid.cTexture.width = this.size;
+            newAsteroid.cTexture.height = this.size;
+            newAsteroid.cMask = document.createElement('canvas');
+            newAsteroid.cMask.width = this.size;
+            newAsteroid.cMask.height = this.size;
+
+            newAsteroid.position = {
+                x: this.position.x,
+                y: this.position.y
+            };
+
+            const spreadSpeed = 0.0005;
+            const perpAngle = Math.atan2(perpY, perpX);
+            const velX = Math.cos(this.angle) * this.velocity;
+            const velY = Math.sin(this.angle) * this.velocity;
+            const spreadX = Math.cos(perpAngle) * spreadSpeed * 1;
+            const spreadY = Math.sin(perpAngle) * spreadSpeed * 1;
+
+            const newVelX = velX + spreadX;
+            const newVelY = velY + spreadY;
+            newAsteroid.velocity = Math.sqrt(newVelX * newVelX + newVelY * newVelY);
+            newAsteroid.angle = Math.atan2(newVelY, newVelX);
+            newAsteroid.rotation = this.rotation + (Math.random() - 0.5) * 0.3;
+            newAsteroid.rotationSpeed = this.rotationSpeed * (0.8 + Math.random() * 0.4);
+
+            newAsteroid.gridX = this.gridX;
+            newAsteroid.gridY = this.gridY;
+
+            data.asteroids.push(newAsteroid);
+            data.grid[newAsteroid.gridX][newAsteroid.gridY].asteroids.push(newAsteroid);
+
+            newAsteroids.push(newAsteroid);
+        }
+
+        // In der splitAsteroid() Methode, nach dem beide Fragmente verarbeitet wurden
+        // aber VOR dem "Original-Asteroid entfernen" Teil:
+
+
+        // Original-Asteroid entfernen
+        const asteroidIndex = data.asteroids.indexOf(this);
+        if (asteroidIndex > -1) {
+            data.asteroids.splice(asteroidIndex, 1);
+        }
+
+        const gridAsteroids = data.grid[this.gridX][this.gridY].asteroids;
+        const gridIndex = gridAsteroids.indexOf(this);
+        if (gridIndex > -1) {
+            gridAsteroids.splice(gridIndex, 1);
+        }
+
+        this.isActive = false;
+
+        return newAsteroids;
     }
 
     update() {
@@ -412,6 +743,7 @@ class Asteroid {
 
 
     }
+
     removeIslands(c) {
         const ctx = c.getContext('2d');
         const imgData = ctx.getImageData(0, 0, c.width, c.height);

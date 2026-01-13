@@ -6,7 +6,7 @@ let numGrid = 10;
 const data = {
     tickInterval: 30,
     idGameInterval: null,
-    numberOfAsteroids: 20,
+    numberOfAsteroids: 10,
 
     maxInitSizeAsteroids: 150,
     minInitSizeAsteroids: 90,
