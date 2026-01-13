@@ -1,28 +1,48 @@
+import helpers from "../helpers.js";
+import elements from "../elements.js";
+import data from "../data.js";
+
 export default class Debris {
-    constructor(x, y, velocity, composition, size) {
+    constructor({
+                    x,
+                    y,
+                    velocity = Math.random() * 1 + .1,
+                    direction = Math.random() * 2 * Math.PI,
+                    angle = 0,
+                    rotationSpeed = Math.random() * .1 - .05,
+                    composition = 'silicon',
+                    size = helpers.createNumber(10, 30)
+                } = {}
+    ) {
+        Object.assign(this, {
+            position: {x, y},
+            composition,
+            velocity,
+            direction,
+            size,
+            angle,
+            rotationSpeed
+        })
+
         this.id = crypto.randomUUID();
-        this.position = { x, y };
-        this.velocity = velocity;
-        this.composition = composition;
-        this.size = size || Math.floor(Math.random() * 6) + 2;
         this.lifespan = Math.floor(Math.random() * 3000) + 2000;
         this.isActive = true;
         this.spawnTime = Date.now();
+
+        this.c = document.createElement('canvas');
+        this.c.width = size;
+        this.c.height = size;
+        this.ctx = this.c.getContext('2d');
+
+        this.path = [...new Array(helpers.createNumber(6, 12))].map(() => {
+            let r = this.c.width / 2;
+            return Math.random() * (r * .25) + (r * .75);
+        });
+        this.render();
+        data.debris.push(this);
     }
 
-    update(deltaTime) {
-        this.position.x += this.velocity.x * deltaTime;
-        this.position.y += this.velocity.y * deltaTime;
-
-        if (Date.now() - this.spawnTime > this.lifespan) {
-            this.isActive = false;
-            return false;
-        }
-
-        return true;
-    }
-
-    render(ctx) {
+    render() {
         let color;
         switch (this.composition) {
             case 'iron':
@@ -32,16 +52,43 @@ export default class Debris {
                 color = '#FFD700';
                 break;
             case 'silicon':
-                color = '#ADD8E6';
+                color = '#aba';
                 break;
             default:
                 color = '#FFFFFF';
         }
+        console.log(color);
 
-        ctx.beginPath();
-        ctx.arc(this.position.x, this.position.y, this.size, 0, Math.PI * 2);
-        ctx.fillStyle = color;
-        ctx.fill();
+        this.ctx.beginPath();
+        // this.ctx.arc(this.position.x, this.position.y, this.size, 0, Math.PI * 2);
+
+        for (let i = 0; i < this.path.length; i++) {
+            const dist = this.path[i];
+            const x = (this.c.width / 2) + Math.cos(i * (2 * Math.PI / this.path.length)) * dist;
+            const y = (this.c.height / 2) + Math.sin(i * (2 * Math.PI / this.path.length)) * dist;
+            if (i === 0) {
+                this.ctx.moveTo(x, y);
+            } else {
+                this.ctx.lineTo(x, y);
+            }
+        }
+
+        this.ctx.closePath();
+        this.ctx.fillStyle = color;
+        this.ctx.fill();
+
+    }
+
+    draw() {
+        const c = elements.cDebris;
+        const ctx = c.getContext('2d');
+
+        ctx.drawImage(
+            this.c,
+            this.position.x - (this.size / 2),
+            this.position.y - (this.size / 2),
+        )
+
     }
 
     checkDistanceCollision(shipX, shipY, shipRadius) {
@@ -64,12 +111,16 @@ export default class Debris {
         }
     }
 
-    static createRandomDebris(x, y, composition) {
-        const velocity = {
-            x: (Math.random() - 0.5) * 4,
-            y: (Math.random() - 0.5) * 4,
-        };
-        const size = Math.floor(Math.random() * 6) + 2;
-        return new Debris(x, y, velocity, composition, size);
+    update() {
+        let relTime = (Date.now() - this.spawnTime) / this.lifespan;
+        if (relTime > 1) {
+            this.isActive = false;
+            return false;
+        }
+        this.angle += this.rotationSpeed;
+        this.position.x += Math.cos(this.direction) * this.velocity;
+        this.position.y += Math.sin(this.direction) * this.velocity;
+
+        return true;
     }
 }

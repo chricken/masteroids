@@ -11,7 +11,7 @@ const data = {
     maxInitSizeAsteroids: 150,
     minInitSizeAsteroids: 90,
 
-    maxSpeedAsteroids: .003,
+    maxSpeedAsteroids: .005,
     maxSpeedPlayers: .01,
     maxSpeedDebris: .01,
 

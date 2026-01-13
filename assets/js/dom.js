@@ -3,10 +3,12 @@
 import elements from './elements.js';
 import Projectile from './classes/Projectile.js';
 import data from "./data.js";
+import render from "./render.js";
 
 const dom = {
     mapping() {
         elements.cAsteroids = document.querySelector('#cAsteroids')
+        elements.cDebris = document.querySelector('#cDebris');
         elements.cProjectiles = document.querySelector('#cProjectiles');
     },
     appendEventListeners() {
@@ -18,6 +20,7 @@ const dom = {
                 direction: 1.5 * Math.PI,
             });
         })
+        window.addEventListener('resize', render.init)
     },
     create({
                content = false,

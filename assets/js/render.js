@@ -9,6 +9,8 @@ const render = {
         elements.cAsteroids.height = document.documentElement.clientHeight;
         elements.cProjectiles.width = document.documentElement.clientWidth;
         elements.cProjectiles.height = document.documentElement.clientHeight;
+        elements.cDebris.width = document.documentElement.clientWidth;
+        elements.cDebris.height = document.documentElement.clientHeight;
     },
     asteroids() {
         elements.cAsteroids.getContext('2d').clearRect(
@@ -16,21 +18,6 @@ const render = {
             elements.cAsteroids.width,
             elements.cAsteroids.height
         );
-
-        /*
-        const ctx = elements.cAsteroids.getContext('2d');
-        const gridWidth = Math.floor(elements.cAsteroids.width / data.numGrid);
-        const gridHeight = Math.floor(elements.cAsteroids.height / data.numGrid);
-        ctx.beginPath()
-        ctx.strokeStyle = '#aaa';
-        for(let i = 0; i < data.numGrid; i++){
-            ctx.moveTo(i*gridWidth, 0);
-            ctx.lineTo(i*gridWidth, elements.cAsteroids.height);
-            ctx.moveTo(0, i*gridHeight);
-            ctx.lineTo( elements.cAsteroids.width, i*gridHeight);
-        }
-        ctx.stroke()
-        */
 
         data.asteroids.forEach(asteroid => {
             asteroid.update();
@@ -48,8 +35,23 @@ const render = {
             projectile.update();
             projectile.draw();
         });
-    }
+    },
+    debris(){
+        elements.cDebris.getContext('2d').clearRect(
+            0, 0,
+            elements.cDebris.width,
+            elements.cDebris.height
+        );
 
+        // Inaktive Debris entfernen, ohne die Reihenfolge zu stören
+        const activeDebris = [];
+        data.debris.forEach(debris => {
+            debris.update();
+            debris.draw();
+            debris.isActive && (activeDebris.push(debris));
+        });
+        data.debris = activeDebris;
+    },
 
 }
 

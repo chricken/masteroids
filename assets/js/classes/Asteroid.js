@@ -42,7 +42,7 @@ class Asteroid {
         this.maxDistance = this.size / 2 * .7;
         this.id = id ? id : helpers.createID();
         this.position = {x: Math.random(), y: Math.random()};
-        this.velocity = Math.random() * data.maxSpeedAsteroids;
+        this.velocity = Math.random() * (data.maxSpeedAsteroids / 2);
         this.angle = Math.random() * Math.PI * 2;
         this.rotation = Math.random() * Math.PI * 2;
         this.rotationSpeed = (Math.random() - 0.5) * 0.02;
@@ -72,6 +72,196 @@ class Asteroid {
         this.renderFull({c: this.cRender})
 
         data.asteroids.push(this);
+    }
+
+    draw() {
+        const ctxAsteroids = elements.cAsteroids.getContext('2d');
+
+        const x = this.position.x * elements.cAsteroids.width;
+        const y = this.position.y * elements.cAsteroids.height;
+
+        ctxAsteroids.save();
+        ctxAsteroids.translate(x, y);
+        ctxAsteroids.rotate(this.rotation);
+        ctxAsteroids.drawImage(
+            // this.cMask,
+            this.cRender,
+            // this.cTexture,
+            -this.size / 2,
+            -this.size / 2
+        );
+
+        /*
+        ctxAsteroids.beginPath();
+        ctxAsteroids.arc(0, 0, this.radius, 0, 2 * Math.PI);
+        ctxAsteroids.strokeStyle = '#555';
+        ctxAsteroids.stroke();
+        */
+
+        ctxAsteroids.restore();
+
+    }
+
+    hit(projectile) {
+
+        // console.time(`hit_${count}`);
+        let pX = projectile.posX;
+        let pY = projectile.posY;
+
+        // Die Differenz sollte erst in Canvas-Pixeln berechnet werden
+        const relativeX = pX - (this.position.x * elements.cAsteroids.width);
+        const relativeY = pY - (this.position.y * elements.cAsteroids.height);
+
+        // Adjust for the asteroid's rotation
+        const angle = -this.rotation;
+        const rotatedX = relativeX * Math.cos(angle) - relativeY * Math.sin(angle);
+        const rotatedY = relativeX * Math.sin(angle) + relativeY * Math.cos(angle);
+
+        // Calculate the position on the cMask canvas
+        const maskX = this.size / 2 + rotatedX;
+        const maskY = this.size / 2 + rotatedY;
+
+        // Wenn am Einschlagpunkt kein gefüllter Pixel liegt, abbrechen
+        const ctxRender = this.cRender.getContext('2d');
+        let pixel = ctxRender.getImageData(maskX, maskY, 1, 1);
+
+        // console.log(pixel.data);
+        if (pixel.data[3] < 200) {
+            return false;
+        }
+
+        // Zeichne den Einschlag bzw die geschlagene KLücke
+        ctxRender.beginPath();
+
+        // ctxRender.arc(maskX, maskY, 10, 0, Math.PI * 2);
+        for (let i = 0; i < Math.PI * 2; i += Math.PI / 6) {
+            let dist = Math.random() * 10 + 5;
+            let x = maskX + Math.cos(i) * dist;
+            let y = maskY + Math.sin(i) * dist;
+            if (i === 0) {
+                ctxRender.moveTo(x, y);
+            } else {
+                ctxRender.lineTo(x, y);
+            }
+        }
+
+        ctxRender.fillStyle = 'rgba(0,0,0,255)';
+        ctxRender.globalCompositeOperation = 'destination-out';
+        ctxRender.fill();
+
+
+        ctxRender.globalCompositeOperation = 'source-over';
+
+        // impulse übertragen
+        // impulse übertragen
+        // 1. Projektilimpuls in Vektorkomponenten zerlegen
+        const projectileVelocityX = Math.cos(projectile.direction) * projectile.speed;
+        const projectileVelocityY = Math.sin(projectile.direction) * projectile.speed;
+        const projectileMomentumX = projectileVelocityX * projectile.impulse;
+        const projectileMomentumY = projectileVelocityY * projectile.impulse;
+
+        // 2. Aktuelle Asteroidengeschwindigkeit in Vektorkomponenten
+        const asteroidVelocityX = Math.cos(this.angle) * this.velocity;
+        const asteroidVelocityY = Math.sin(this.angle) * this.velocity;
+
+        // 3. Impulsübertragung (addiere die Impulse)
+        const newVelocityX = asteroidVelocityX + projectileMomentumX;
+        const newVelocityY = asteroidVelocityY + projectileMomentumY;
+
+        // 4. Neue Geschwindigkeit und Richtung berechnen
+        this.velocity = Math.sqrt(newVelocityX * newVelocityX + newVelocityY * newVelocityY);
+        this.angle = Math.atan2(newVelocityY, newVelocityX);
+
+        // Optional: Maximale Geschwindigkeit begrenzen
+        if (this.velocity > data.maxSpeedAsteroids * 2) {
+            this.velocity = data.maxSpeedAsteroids * 2;
+        }
+
+        // 5. Rotation durch Drehmoment beeinflussen
+        // Berechne den Vektor vom Asteroidenzentrum zum Einschlagpunkt
+        const asteroidCenterX = this.position.x * elements.cAsteroids.width;
+        const asteroidCenterY = this.position.y * elements.cAsteroids.height;
+        const impactVectorX = projectile.posX - asteroidCenterX;
+        const impactVectorY = projectile.posY - asteroidCenterY;
+
+        // Berechne das Kreuzprodukt (z-Komponente) für das Drehmoment
+        // Kreuzprodukt: impactVector × projectileMomentum
+        const torque = (impactVectorX * projectileMomentumY - impactVectorY * projectileMomentumX);
+
+        // Normalisiere das Drehmoment basierend auf der Größe des Asteroiden
+        // Kleinere Asteroiden drehen sich stärker, größere weniger
+        const angularImpulse = torque / (this.size * this.size);
+
+        // Addiere zur Rotationsgeschwindigkeit
+        this.rotationSpeed += angularImpulse * 0.1; // Skalierungsfaktor für Spielgefühl
+
+        // Optional: Maximale Rotationsgeschwindigkeit begrenzen
+        const maxRotationSpeed = 0.1;
+        if (Math.abs(this.rotationSpeed) > maxRotationSpeed) {
+            this.rotationSpeed = Math.sign(this.rotationSpeed) * maxRotationSpeed;
+        }
+
+        // Debris erzeugen
+        let numDebris = helpers.createNumber(3, 6);
+        for (let i = 0; i < numDebris; i++) {
+            new Debris({
+                x: projectile.posX,
+                y: projectile.posY,
+                size: helpers.createNumber(3, 10),
+            })
+        }
+
+        // Abgetrennte Teile entfernen
+
+
+        count++
+        return true;
+    }
+
+    checkDivision() {
+
+    }
+
+    update() {
+        this.assignGrid();
+        // Aktualisiere Rotation
+        this.rotation += this.rotationSpeed;
+
+        // Berechne neue Position basierend auf Winkel und Geschwindigkeit
+        this.position.x += Math.cos(this.angle) * this.velocity;
+        this.position.y += Math.sin(this.angle) * this.velocity;
+
+        // Wrap-around für Bildschirmränder
+        let w = this.size / elements.cAsteroids.width;
+        let h = this.size / elements.cAsteroids.height;
+        if (this.position.x < (0 - w / 2)) this.position.x = (1 + w / 2);
+        if (this.position.x > (1 + w / 2)) this.position.x = (0 - w / 2);
+        if (this.position.y < (0 - h / 2)) this.position.y = (1 + h / 2);
+        if (this.position.y > (1 + h / 2)) this.position.y = (0 - h / 2);
+    }
+
+    assignGrid() {
+        // Berechnen, in welchem Grid der Asteroid liegt (optimiert)
+        let gridX = Math.floor(this.position.x * data.numGrid);
+        let gridY = Math.floor(this.position.y * data.numGrid);
+
+        // Clamp in einem Schritt
+        gridX = Math.min(Math.max(gridX, 0), data.numGrid - 1);
+        gridY = Math.min(Math.max(gridY, 0), data.numGrid - 1);
+
+        // vom bisherigen Grid in neuen Grid verschieben
+        if (this.gridX !== gridX || this.gridY !== gridY) {
+            let oldGrid = data.grid[this.gridX][this.gridY].asteroids;
+
+            // Schnellerer Remove: splice mit 2. Parameter
+            let oldIndex = oldGrid.indexOf(this);
+            if (oldIndex !== -1) oldGrid.splice(oldIndex, 1);
+
+            // Gridbox umstellen und Asteroid hier einhängen
+            this.gridX = gridX;
+            this.gridY = gridY;
+            data.grid[gridX][gridY].asteroids.push(this);
+        }
     }
 
     renderTexture({c}) {
@@ -170,135 +360,6 @@ class Asteroid {
         // und ein displacement
     }
 
-    draw() {
-        const ctxAsteroids = elements.cAsteroids.getContext('2d');
-
-        const x = this.position.x * elements.cAsteroids.width;
-        const y = this.position.y * elements.cAsteroids.height;
-
-        ctxAsteroids.save();
-        ctxAsteroids.translate(x, y);
-        ctxAsteroids.rotate(this.rotation);
-        ctxAsteroids.drawImage(
-            // this.cMask,
-            this.cRender,
-            // this.cTexture,
-            -this.size / 2,
-            -this.size / 2
-        );
-
-        /*
-        ctxAsteroids.beginPath();
-        ctxAsteroids.arc(0, 0, this.radius, 0, 2 * Math.PI);
-        ctxAsteroids.strokeStyle = '#555';
-        ctxAsteroids.stroke();
-        */
-
-        ctxAsteroids.restore();
-
-    }
-
-    hit(projectile) {
-
-        // console.time(`hit_${count}`);
-        let pX = projectile.posX;
-        let pY = projectile.posY;
-
-        // Die Differenz sollte erst in Canvas-Pixeln berechnet werden
-        const relativeX = pX - (this.position.x * elements.cAsteroids.width);
-        const relativeY = pY - (this.position.y * elements.cAsteroids.height);
-
-        // Adjust for the asteroid's rotation
-        const angle = -this.rotation;
-        const rotatedX = relativeX * Math.cos(angle) - relativeY * Math.sin(angle);
-        const rotatedY = relativeX * Math.sin(angle) + relativeY * Math.cos(angle);
-
-        // Calculate the position on the cMask canvas
-        const maskX = this.size / 2 + rotatedX;
-        const maskY = this.size / 2 + rotatedY;
-
-        // Wenn am Einschlagpunkt kein gefüllter Pixel liegt, abbrechen
-        const ctxRender = this.cRender.getContext('2d');
-        let pixel = ctxRender.getImageData(maskX, maskY, 1, 1);
-
-        // console.log(pixel.data);
-        if (pixel.data[3] < 200) {
-            /*
-            pixel.data[0] = 255;
-            pixel.data[3] = 255;
-            ctxRender.putImageData(pixel,maskX, maskY);
-             */
-            return false;
-        }
-
-
-        // Draw a black circle on the cMask canvas
-        ctxRender.globalCompositeOperation = 'destination-out';
-        ctxRender.beginPath();
-        // ctxRender.arc(maskX, maskY, 10, 0, Math.PI * 2);
-        for (let i = 0; i < Math.PI * 2; i += Math.PI / 10) {
-            let dist = Math.random() * 10 + 5;
-            let x = maskX + Math.cos(i) * dist;
-            let y = maskY + Math.sin(i) * dist;
-            if (i === 0) {
-                ctxRender.moveTo(x, y);
-            } else {
-                ctxRender.lineTo(x, y);
-            }
-        }
-        ctxRender.fillStyle = 'rgba(0,0,0,255)';
-        ctxRender.fill();
-
-        ctxRender.globalCompositeOperation = 'source-over';
-
-        // console.timeEnd(`hit_${count}`);
-        count++
-        // this.renderFull({c: this.cRender})
-        return true;
-    }
-
-    update() {
-        this.assignGrid();
-        // Aktualisiere Rotation
-        this.rotation += this.rotationSpeed;
-
-        // Berechne neue Position basierend auf Winkel und Geschwindigkeit
-        this.position.x += Math.cos(this.angle) * this.velocity;
-        this.position.y += Math.sin(this.angle) * this.velocity;
-
-        // Wrap-around für Bildschirmränder
-        let w = this.size / elements.cAsteroids.width;
-        let h = this.size / elements.cAsteroids.height;
-        if (this.position.x < (0 - w / 2)) this.position.x = (1 + w / 2);
-        if (this.position.x > (1 + w / 2)) this.position.x = (0 - w / 2);
-        if (this.position.y < (0 - h / 2)) this.position.y = (1 + h / 2);
-        if (this.position.y > (1 + h / 2)) this.position.y = (0 - h / 2);
-    }
-
-    assignGrid() {
-        // Berechnen, in welchem Grid der Asteroid liegt (optimiert)
-        let gridX = Math.floor(this.position.x * data.numGrid);
-        let gridY = Math.floor(this.position.y * data.numGrid);
-
-        // Clamp in einem Schritt
-        gridX = Math.min(Math.max(gridX, 0), data.numGrid - 1);
-        gridY = Math.min(Math.max(gridY, 0), data.numGrid - 1);
-
-        // vom bisherigen Grid in neuen Grid verschieben
-        if (this.gridX !== gridX || this.gridY !== gridY) {
-            let oldGrid = data.grid[this.gridX][this.gridY].asteroids;
-
-            // Schnellerer Remove: splice mit 2. Parameter
-            let oldIndex = oldGrid.indexOf(this);
-            if (oldIndex !== -1) oldGrid.splice(oldIndex, 1);
-
-            // Gridbox umstellen und Asteroid hier einhängen
-            this.gridX = gridX;
-            this.gridY = gridY;
-            data.grid[gridX][gridY].asteroids.push(this);
-        }
-    }
-
     renderDisplacementMap(c) {
         const ctx = c.getContext('2d');
         const imageData = ctx.createImageData(c.width, c.height);
@@ -351,7 +412,6 @@ class Asteroid {
 
 
     }
-
     removeIslands(c) {
         const ctx = c.getContext('2d');
         const imgData = ctx.getImageData(0, 0, c.width, c.height);
@@ -454,24 +514,16 @@ class Asteroid {
         this.removeIslands(c);
 
         imageData = ctx.getImageData(0, 0, c.width, c.height);
-        data = imageData.data;
-        // Outline zeichnen
+        const imageDataTexture = this.cTexture.getContext('2d').getImageData(0, 0, c.width, c.height);
 
-        for (let i = 0; i < data.length; i += 4) {
-            if (data[i] < this.outlineMinValue) {
-                data[i + 3] = 0;
-            } else if (data[i] >= this.outlineMinValue && data[i] <= this.outlineMaxValue) {
-                data[i + 0] = 255;
-                data[i + 1] = 255;
-                data[i + 2] = 255;
-            } else {
-                data[i + 0] = 20;
-                data[i + 1] = 20;
-                data[i + 2] = 20;
-            }
+        for (let i = 0; i < imageData.data.length; i += 4) {
+            imageData.data[i + 0] = imageData.data[i + 0] * (imageDataTexture.data[i + 0] / 255) + .25;
+            imageData.data[i + 1] = imageData.data[i + 1] * (imageDataTexture.data[i + 1] / 255) + .2;
+            imageData.data[i + 2] = imageData.data[i + 2] * (imageDataTexture.data[i + 2] / 255) + .2;
         }
+        ctx.putImageData(imageData, 0, 0);
 
-        // Invert the mask  back
+        // Invert the mask back
         ctxMask.globalCompositeOperation = 'difference';
         ctxMask.fillStyle = '#fff';
         ctxMask.fillRect(0, 0, this.cMask.width, this.cMask.height);

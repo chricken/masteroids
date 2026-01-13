@@ -16,9 +16,11 @@ class Projectile {
                     aiming = null,
                     gridX = 0,
                     gridY = 0,
+                    impulse = .02,    // Wieviel Energie wird an den Asteroiden übertragen?
+                    punch = 5       // Wie groß ist das Loch, das gerissen wird?
                 }) {
 
-        Object.assign(this, {posX, posY, speed, gridX, gridY})
+        Object.assign(this, {posX, posY, speed, gridX, gridY, impulse, punch})
         streuung = Math.random() * (streuung * 2) - streuung
         this.direction = direction + streuung;
 
