@@ -222,7 +222,6 @@ class Asteroid {
 
         // Prüfe ob mindestens ein Fragment groß genug ist
         const largeEnoughFragment = this.countSolidPixels(this.cRender) > this.minFragmentPixels * 3
-        console.log(largeEnoughFragment, this.minFragmentPixels * 3);
 
         if (largeEnoughFragment && Math.random() < this.thresholdAsteroidByHit) {
             // if (Math.random() < this.thresholdAsteroidByHit) {
@@ -248,26 +247,34 @@ class Asteroid {
             newFragment.position.x = this.position.x + (rotatedX / elements.cAsteroids.width);
             newFragment.position.y = this.position.y + (rotatedY / elements.cAsteroids.height);
 
+/*
             // Bewegung: Kombination aus Original-Asteroid und Projektil-Richtung
             const projectileInfluence = 0.1;
             const asteroidVelX = Math.cos(this.angle) * this.velocity;
             const asteroidVelY = Math.sin(this.angle) * this.velocity;
             const projectileVelX = Math.cos(projectile.direction) * projectile.speed * 0.5;
             const projectileVelY = Math.sin(projectile.direction) * projectile.speed * 0.5;
-
             const newVelX = asteroidVelX * (1 - projectileInfluence) + projectileVelX * projectileInfluence;
             const newVelY = asteroidVelY * (1 - projectileInfluence) + projectileVelY * projectileInfluence;
 
             newFragment.velocity = Math.sqrt(newVelX * newVelX + newVelY * newVelY) * (0.8 + Math.random() * 0.4);
             newFragment.angle = Math.atan2(newVelY, newVelX) + (Math.random() - 0.5) * 0.8;
             newFragment.rotationSpeed = (Math.random() - 0.5) * 0.05;
+  */
+            // Ersetze die Zeilen für Bewegung (ca. Zeile 250-261) mit:
+            // Bewegung: Hauptsächlich entgegen der Projektilrichtung mit viel Zufälligkeit
+            const oppositeDirection = projectile.direction + Math.PI; // 180° gedreht
+            const randomDeviation = (Math.random() - 0.5) * Math.PI; // Bis zu ±90° Abweichung
+
+            newFragment.angle = oppositeDirection + randomDeviation;
+            newFragment.velocity = this.velocity * (0.5 + Math.random() * 0.8); // 50-130% der Original-Geschwindigkeit
+            newFragment.rotationSpeed = (Math.random() - 0.5) * 0.05;
 
             // Grid zuweisen
-            data.asteroids.push(newFragment);
+            data.asteroids.unshift(newFragment);
+
             newFragment.assignGrid();
-
         }
-
 
         count++
         return true;

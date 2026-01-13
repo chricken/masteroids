@@ -11,7 +11,10 @@ export default class Debris {
                     angle = 0,
                     rotationSpeed = Math.random() * .1 - .05,
                     composition = 'silicon',
-                    size = helpers.createNumber(10, 30)
+                    size = helpers.createNumber(10, 30),
+                    opacity = 1,
+                    lifeSpanMin = 5000,
+                    lifeSpanMax = 10000,
                 } = {}
     ) {
         Object.assign(this, {
@@ -21,11 +24,14 @@ export default class Debris {
             direction,
             size,
             angle,
-            rotationSpeed
+            rotationSpeed,
+            lifeSpanMin,
+            lifeSpanMax,
+            opacity
         })
 
         this.id = crypto.randomUUID();
-        this.lifespan = Math.floor(Math.random() * 3000) + 2000;
+        this.lifespan = Math.floor(Math.random() *( lifeSpanMax - lifeSpanMin)) + lifeSpanMin;
         this.isActive = true;
         this.spawnTime = Date.now();
 
@@ -82,6 +88,7 @@ export default class Debris {
         const c = elements.cDebris;
         const ctx = c.getContext('2d');
 
+        ctx.globalAlpha = this.opacity;
         ctx.drawImage(
             this.c,
             this.position.x - (this.size / 2),
@@ -90,6 +97,18 @@ export default class Debris {
 
     }
 
+    update() {
+        let relTime = (Date.now() - this.spawnTime) / this.lifespan; // Wert 0 -> 1
+        if (relTime > 1) {
+            this.isActive = false;
+            return false;
+        }
+        this.angle += this.rotationSpeed;
+        this.position.x += Math.cos(this.direction) * this.velocity;
+        this.position.y += Math.sin(this.direction) * this.velocity;
+        this.opacity = Math.min(1,(1 - relTime)*5);
+        return true;
+    }
     checkDistanceCollision(shipX, shipY, shipRadius) {
         const dx = this.position.x - shipX;
         const dy = this.position.y - shipY;
@@ -110,16 +129,4 @@ export default class Debris {
         }
     }
 
-    update() {
-        let relTime = (Date.now() - this.spawnTime) / this.lifespan;
-        if (relTime > 1) {
-            this.isActive = false;
-            return false;
-        }
-        this.angle += this.rotationSpeed;
-        this.position.x += Math.cos(this.direction) * this.velocity;
-        this.position.y += Math.sin(this.direction) * this.velocity;
-
-        return true;
-    }
 }
