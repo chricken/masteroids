@@ -7,6 +7,8 @@ import Asteroid from './classes/Asteroid.js';
 import data from "./data.js";
 import game from "./game.js";
 
+import connector from '/connector/index.js';
+
 const init = () => {
     noise.init();
     dom.mapping();
