@@ -10,6 +10,7 @@ import game from "./game.js";
 import connector from '/connector/index.js';
 
 const init = () => {
+    connector.init();
     noise.init();
     dom.mapping();
     dom.appendEventListeners();
