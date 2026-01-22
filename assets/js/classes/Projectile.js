@@ -17,7 +17,7 @@ class Projectile {
                     gridX = 0,
                     gridY = 0,
                     impulse = .02,    // Wieviel Energie wird an den Asteroiden übertragen?
-                    punch = 5       // Wie groß ist das Loch, das gerissen wird?
+                    punch = 15       // Wie groß ist das Loch, das gerissen wird?
                 }) {
 
         Object.assign(this, {posX, posY, speed, gridX, gridY, impulse, punch})
@@ -60,15 +60,6 @@ class Projectile {
         ctx.drawImage(this.c, -this.c.width / 2, -this.c.height / 2);
         ctx.restore();
 
-        /*
-        ctx.fillStyle = '#ff0';
-        ctx.font = '30px Tahoma, Geneva, Verdana, sans-serif';
-        ctx.fillText(
-            `${this.gridX}, ${this.gridY}`,
-            this.posX,
-            this.posY
-        )
-        */
     }
 
     update() {

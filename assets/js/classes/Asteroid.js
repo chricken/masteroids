@@ -109,6 +109,7 @@ class Asteroid {
     }
 
     hit(projectile) {
+        console.log(projectile);
 
         // console.time(`hit_${count}`);
         let pX = projectile.posX;
@@ -138,10 +139,10 @@ class Asteroid {
 
         // Zeichne den Einschlag bzw die geschlagene KLücke
         ctxRender.beginPath();
-
         // ctxRender.arc(maskX, maskY, 10, 0, Math.PI * 2);
         for (let i = 0; i < Math.PI * 2; i += Math.PI / 6) {
-            let dist = Math.random() * 10 + 5;
+
+            let dist = Math.random() * projectile.punch + (projectile.punch / 2);
             let x = maskX + Math.cos(i) * dist;
             let y = maskY + Math.sin(i) * dist;
             if (i === 0) {
@@ -247,20 +248,20 @@ class Asteroid {
             newFragment.position.x = this.position.x + (rotatedX / elements.cAsteroids.width);
             newFragment.position.y = this.position.y + (rotatedY / elements.cAsteroids.height);
 
-/*
-            // Bewegung: Kombination aus Original-Asteroid und Projektil-Richtung
-            const projectileInfluence = 0.1;
-            const asteroidVelX = Math.cos(this.angle) * this.velocity;
-            const asteroidVelY = Math.sin(this.angle) * this.velocity;
-            const projectileVelX = Math.cos(projectile.direction) * projectile.speed * 0.5;
-            const projectileVelY = Math.sin(projectile.direction) * projectile.speed * 0.5;
-            const newVelX = asteroidVelX * (1 - projectileInfluence) + projectileVelX * projectileInfluence;
-            const newVelY = asteroidVelY * (1 - projectileInfluence) + projectileVelY * projectileInfluence;
+            /*
+                        // Bewegung: Kombination aus Original-Asteroid und Projektil-Richtung
+                        const projectileInfluence = 0.1;
+                        const asteroidVelX = Math.cos(this.angle) * this.velocity;
+                        const asteroidVelY = Math.sin(this.angle) * this.velocity;
+                        const projectileVelX = Math.cos(projectile.direction) * projectile.speed * 0.5;
+                        const projectileVelY = Math.sin(projectile.direction) * projectile.speed * 0.5;
+                        const newVelX = asteroidVelX * (1 - projectileInfluence) + projectileVelX * projectileInfluence;
+                        const newVelY = asteroidVelY * (1 - projectileInfluence) + projectileVelY * projectileInfluence;
 
-            newFragment.velocity = Math.sqrt(newVelX * newVelX + newVelY * newVelY) * (0.8 + Math.random() * 0.4);
-            newFragment.angle = Math.atan2(newVelY, newVelX) + (Math.random() - 0.5) * 0.8;
-            newFragment.rotationSpeed = (Math.random() - 0.5) * 0.05;
-  */
+                        newFragment.velocity = Math.sqrt(newVelX * newVelX + newVelY * newVelY) * (0.8 + Math.random() * 0.4);
+                        newFragment.angle = Math.atan2(newVelY, newVelX) + (Math.random() - 0.5) * 0.8;
+                        newFragment.rotationSpeed = (Math.random() - 0.5) * 0.05;
+              */
             // Ersetze die Zeilen für Bewegung (ca. Zeile 250-261) mit:
             // Bewegung: Hauptsächlich entgegen der Projektilrichtung mit viel Zufälligkeit
             const oppositeDirection = projectile.direction + Math.PI; // 180° gedreht
@@ -374,7 +375,6 @@ class Asteroid {
 
         ctx1.putImageData(imageData1, 0, 0);
         ctx2.putImageData(imageData2, 0, 0);
-
 
         // Hilfsfunktion: Erzeuge Debris aus Fragment
         const createDebrisFromFragment = (canvas) => {
@@ -538,10 +538,6 @@ class Asteroid {
 
             newAsteroids.push(newAsteroid);
         }
-
-        // In der splitAsteroid() Methode, nach dem beide Fragmente verarbeitet wurden
-        // aber VOR dem "Original-Asteroid entfernen" Teil:
-
 
         // Original-Asteroid entfernen
         const asteroidIndex = data.asteroids.indexOf(this);
