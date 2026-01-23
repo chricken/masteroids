@@ -40,44 +40,6 @@ class Ship {
         // document.body.append(this.cRender);
     }
 
-    /*
-        update() {
-            // console.log([...data.pressedKeys].join(', '));
-            // console.log(data.pressedKeys.has('k'));
-            if (data.pressedKeys.has('ArrowRight') || data.pressedKeys.has('d')) {
-                this.rotationSpeed += this.rotationThrust;
-                this.rotationSpeed = Math.min(this.rotationSpeed, this.rotationSpeedMax)
-            }
-            if (data.pressedKeys.has('ArrowLeft') || data.pressedKeys.has('a')) {
-                this.rotationSpeed -= this.rotationThrust;
-                this.rotationSpeed = Math.max(this.rotationSpeed, -this.rotationSpeedMax)
-            }
-            this.rotationSpeed *= (1 - this.rotationDecelerate);
-            this.rotation += this.rotationSpeed;
-
-            // Schub geben
-            if (data.pressedKeys.has('ArrowUp') || data.pressedKeys.has('w')) {
-                this.velocity += this.thrust;
-                this.velocity = Math.min(this.velocity, this.velocityMax);
-            }
-
-            // Bewegung in die Richtung, in die das Schiff schaut
-            this.position.x += Math.cos(this.rotation - (.5 * Math.PI)) * this.velocity;
-            this.position.y += Math.sin(this.rotation - (.5 * Math.PI)) * this.velocity;
-            // console.log(this.velocity);
-
-            // Geschwindigkeit verringern, wenn kein Schub gegeben wird
-            if (!data.pressedKeys.has('ArrowUp') && !data.pressedKeys.has('w')) {
-                this.velocity *= (1 - this.deceleration);
-            }
-
-            // Position innerhalb des Bildschirms halten
-            if (this.position.x < 0) this.position.x = 1
-            if (this.position.x > 1) this.position.x = 0
-            if (this.position.y < 0) this.position.y = 1
-            if (this.position.y > 1) this.position.y = 0
-        }
-    */
     update() {
         // Rotation wie gehabt
         if (data.pressedKeys.has('ArrowRight') || data.pressedKeys.has('d')) {
