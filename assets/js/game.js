@@ -17,6 +17,7 @@ const game = {
         render.asteroids();
         render.projectiles();
         render.debris();
+        render.ship();
     }
 }
 

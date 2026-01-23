@@ -8,8 +8,8 @@ const data = {
     idGameInterval: null,
     numberOfAsteroids: 10,
 
-    maxInitSizeAsteroids: 150,
-    minInitSizeAsteroids: 90,
+    maxInitSizeAsteroids: 200,
+    minInitSizeAsteroids: 70,
 
     maxSpeedAsteroids: .005,
     maxSpeedPlayers: .01,
@@ -21,6 +21,9 @@ const data = {
     projectiles: [],
     stations: [],
     enemies: [],
+    ship: null,
+
+    pressedKeys:new Set(),
 
     // 2-Dimensionales Raster
     // Jedes Rasterelement enthält Arrays für jeden Elemententyp

@@ -83,11 +83,21 @@ class Asteroid {
     draw() {
         const ctxAsteroids = elements.cAsteroids.getContext('2d');
 
-        const x = this.position.x * elements.cAsteroids.width;
-        const y = this.position.y * elements.cAsteroids.height;
+        let x = this.position.x;
+        let y = this.position.y;
 
         ctxAsteroids.save();
+        x -= data.ship.position.x;
+        y -= data.ship.position.y;
+
+        x = (x + 1) % 1;
+        y = (y + 1) % 1;
+
+        x *= elements.cAsteroids.width;
+        y *= elements.cAsteroids.height;
+
         ctxAsteroids.translate(x, y);
+
         ctxAsteroids.rotate(this.rotation);
         ctxAsteroids.drawImage(
             // this.cMask,
@@ -566,12 +576,18 @@ class Asteroid {
         this.position.y += Math.sin(this.angle) * this.velocity;
 
         // Wrap-around für Bildschirmränder
+        let sp = data.ship.position;
         let w = this.size / elements.cAsteroids.width;
         let h = this.size / elements.cAsteroids.height;
+
+        this.position.x = (this.position.x + 1) % 1;
+        this.position.y = (this.position.y + 1) % 1;
+        /*
         if (this.position.x < (0 - w / 2)) this.position.x = (1 + w / 2);
         if (this.position.x > (1 + w / 2)) this.position.x = (0 - w / 2);
         if (this.position.y < (0 - h / 2)) this.position.y = (1 + h / 2);
         if (this.position.y > (1 + h / 2)) this.position.y = (0 - h / 2);
+        */
     }
 
     assignGrid() {

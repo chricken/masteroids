@@ -10,6 +10,7 @@ const dom = {
         elements.cAsteroids = document.querySelector('#cAsteroids')
         elements.cDebris = document.querySelector('#cDebris');
         elements.cProjectiles = document.querySelector('#cProjectiles');
+        elements.cShip = document.querySelector('#cShip');
     },
     appendEventListeners() {
         elements.cProjectiles.addEventListener('click', (evt) => {
@@ -20,7 +21,13 @@ const dom = {
                 direction: 1.5 * Math.PI,
             });
         })
-        window.addEventListener('resize', render.init)
+        window.addEventListener('resize', render.init);
+        window.addEventListener('keydown', evt => {
+            data.pressedKeys.add(evt.key);
+        })
+        window.addEventListener('keyup', evt => {
+            data.pressedKeys.delete(evt.key);
+        })
     },
     create({
                content = false,

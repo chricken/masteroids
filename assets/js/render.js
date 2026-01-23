@@ -11,6 +11,8 @@ const render = {
         elements.cProjectiles.height = document.documentElement.clientHeight;
         elements.cDebris.width = document.documentElement.clientWidth;
         elements.cDebris.height = document.documentElement.clientHeight;
+        elements.cShip.width = document.documentElement.clientWidth;
+        elements.cShip.height = document.documentElement.clientHeight;
     },
     asteroids() {
         elements.cAsteroids.getContext('2d').clearRect(
@@ -52,6 +54,15 @@ const render = {
         });
         data.debris = activeDebris;
     },
+    ship(){
+        elements.cShip.getContext('2d').clearRect(
+            0, 0,
+            elements.cShip.width,
+            elements.cShip.height
+        )
+        data.ship.update();
+        data.ship.draw();
+    }
 
 }
 

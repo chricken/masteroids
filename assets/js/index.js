@@ -8,6 +8,7 @@ import data from "./data.js";
 import game from "./game.js";
 
 import connector from '/connector/index.js';
+import Ship from "./classes/Ship.js";
 
 const init = () => {
     connector.init();
@@ -16,11 +17,12 @@ const init = () => {
     dom.appendEventListeners();
     render.init();
 
+    data.ship = new Ship();
     for (let i = 0; i < data.numberOfAsteroids; i++) {
         new Asteroid();
     }
 
-    console.log(data.asteroids.map(asteroid => asteroid.position));
+    // console.log(data.asteroids.map(asteroid => asteroid.position));
 
     game.start();
 
