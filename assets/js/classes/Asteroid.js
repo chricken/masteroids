@@ -119,7 +119,7 @@ class Asteroid {
     }
 
     hit(projectile) {
-        console.log(projectile);
+        // console.log(projectile);
 
         // console.time(`hit_${count}`);
         let pX = projectile.posX;
